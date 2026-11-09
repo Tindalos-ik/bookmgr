@@ -147,11 +147,15 @@ export const useLibraryStore = defineStore("library", () => {
     initialized.value = false;
     await initialize();
   }
-  /** 用 account 与 password 登录，只有最新登录尝试可以提交身份。 */
-  async function login(account: string, password: string): Promise<void> {
+  /** 用 account、password 与 portal 登录，身份恢复成功后清除旧提示。 */
+  async function login(
+    account: string,
+    password: string,
+    portal: "reader" | "admin" = "reader",
+  ): Promise<void> {
     const generation = nextGeneration();
     try {
-      await api.login(account, password);
+      await api.login(account, password, portal);
       assertCurrent(generation);
       nextGeneration();
       clearBusiness();
@@ -163,6 +167,32 @@ export const useLibraryStore = defineStore("library", () => {
       throw error;
     }
     await initialize();
+    if (session.value && initialized.value && !restoreError.value) {
+      notice.value = "";
+    }
+  }
+  /** 用 username、password 注册固定读者账号；不改变当前身份。 */
+  async function register(username: string, password: string): Promise<void> {
+    const generation = authGeneration;
+    await execute(generation, () => api.register(username, password));
+  }
+  /** 用旧密码与新密码更新当前账户；开始时隔离旧请求，成功后清理会话。 */
+  async function changePassword(
+    oldPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const generation = nextGeneration();
+    await execute(generation, () =>
+      api.changePassword(oldPassword, newPassword),
+    );
+    assertCurrent(generation);
+    nextGeneration();
+    clearBusiness();
+    api.clearToken();
+    session.value = null;
+    initialized.value = true;
+    restoreError.value = "";
+    notify("密码已修改，请重新登录");
   }
   /** 撤销当前真实会话；成功或401才清理，网络失败保留令牌供重试。 */
   async function logout(): Promise<void> {
@@ -273,6 +303,8 @@ export const useLibraryStore = defineStore("library", () => {
     restoreError,
     initialize,
     retryInitialize,
+    register,
+    changePassword,
     login,
     logout,
     loadBooks,

@@ -74,6 +74,54 @@ class Publication(BaseModel):
     published: bool = Field(description="目标上架状态")
 
 
+class RegisterRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    username: str = Field(
+        min_length=3, max_length=60, description="用户名，首尾去空白后为3到60字符"
+    )
+    password: str = Field(
+        min_length=8,
+        max_length=128,
+        description="密码，8到128字符，保留首尾空格且不能全为空白",
+    )
+
+    @field_validator("username", mode="before")
+    @classmethod
+    def trim_username(cls, value):
+        """去除用户名 value 的首尾空白，保留内部字符。"""
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("password")
+    @classmethod
+    def meaningful_password(cls, value: str):
+        """拒绝全空白密码 value，保留有效密码原文。"""
+        if not value.strip():
+            raise ValueError("密码不能全为空白")
+        return value
+
+
+class PasswordChangeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    old_password: str = Field(
+        min_length=1, max_length=128, description="当前密码，保留原始空白"
+    )
+    new_password: str = Field(
+        min_length=8,
+        max_length=128,
+        description="新密码，8到128字符，不能全为空白或与旧密码相同",
+    )
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, value: str, info):
+        """校验新密码 value 有有效字符且与 info 中的旧密码不同。"""
+        if not value.strip():
+            raise ValueError("新密码不能全为空白")
+        if value == info.data.get("old_password"):
+            raise ValueError("新密码不能与旧密码相同")
+        return value
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int = Field(description="真实用户编号")

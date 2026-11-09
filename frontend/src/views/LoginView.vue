@@ -1,39 +1,59 @@
-<!-- 登录页：账号密码由后端认证，演示快捷入口也提交真实凭据。 -->
+<!-- 登录页：按入口选择服务端认证 portal，身份始终以真实角色为准。 -->
 <script setup lang="ts">
-import { ref } from "vue";
-import { useRouter } from "vue-router";
+import { ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { BookOpen, ArrowRight } from "lucide-vue-next";
 import { errorMessage, ApiError, isRequestCancelled } from "../api/client";
 import { useLibraryStore } from "../stores/library";
-const store = useLibraryStore(),
-  router = useRouter();
-const account = ref(""),
-  password = ref(""),
-  error = ref(""),
-  pending = ref(false);
-/** 发送表单凭据到后端并显示认证或网络错误。 */
+
+const store = useLibraryStore();
+const route = useRoute();
+const router = useRouter();
+const account = ref(
+  typeof route.query.username === "string" ? route.query.username : "",
+);
+const password = ref("");
+const error = ref("");
+const pending = ref(false);
+
+/** 判断当前登录入口是否要求管理员 portal；无参数。 */
+function isAdminPortal(): boolean {
+  return route.meta.portal === "admin";
+}
+
+watch(
+  () => route.fullPath,
+  () => {
+    error.value = "";
+    password.value = "";
+    account.value =
+      typeof route.query.username === "string" ? route.query.username : "";
+  },
+);
+
+/** 发送凭据与入口 portal，按后端身份进入相应页面。 */
 async function submit() {
   if (pending.value) return;
   pending.value = true;
   error.value = "";
   try {
-    await store.login(account.value.trim(), password.value);
-    await router.push("/overview");
+    await store.login(
+      account.value.trim(),
+      password.value,
+      isAdminPortal() ? "admin" : "reader",
+    );
+    await router.replace(store.isAdmin ? "/manage/books" : "/overview");
   } catch (reason) {
     if (isRequestCancelled(reason)) return;
     error.value =
       reason instanceof ApiError && reason.status === 401
         ? "账号或密码错误，请检查后重试。"
-        : `登录失败：${errorMessage(reason)}`;
+        : reason instanceof ApiError && reason.status === 403
+          ? "此账号没有管理员权限，无法从管理员入口登录。"
+          : `登录失败：${errorMessage(reason)}`;
   } finally {
     pending.value = false;
   }
-}
-/** 将 accountName 指定的 reader/admin 演示账号填入表单并通过真实接口认证。 */
-async function enterDemo(accountName: "reader" | "admin") {
-  account.value = accountName;
-  password.value = accountName === "reader" ? "reader123" : "admin123";
-  await submit();
 }
 </script>
 <template>
@@ -46,47 +66,39 @@ async function enterDemo(accountName: "reader" | "admin") {
       </div>
     </section>
     <section class="login-form">
-      <h2>登录青叶书房</h2>
+      <h2>{{ isAdminPortal() ? "管理员登录" : "用户登录" }}</h2>
       <form @submit.prevent="submit">
-        <label class="field"
-          >账号<input
+        <label class="field">
+          账号
+          <input
             v-model="account"
             autocomplete="username"
             required
-            placeholder="请输入演示账号" /></label
-        ><label class="field"
-          >密码<input
+            placeholder="输入账号"
+          />
+        </label>
+        <label class="field">
+          密码
+          <input
             v-model="password"
             type="password"
             autocomplete="current-password"
             required
-            placeholder="请输入演示密码"
-        /></label>
+            placeholder="输入密码"
+          />
+        </label>
         <p v-if="error" class="form-error" role="alert">{{ error }}</p>
         <button class="button login-submit" type="submit" :disabled="pending">
           {{ pending ? "正在登录…" : "进入书房" }}<ArrowRight :size="18" />
         </button>
       </form>
-      <div class="demo-box">
-        <strong>公开演示账号</strong>
-        <p>读者：reader / reader123<br />管理员：admin / admin123</p>
-        <div class="demo-actions">
-          <button
-            class="button secondary"
-            :disabled="pending"
-            @click="enterDemo('reader')"
-          >
-            读者快捷登录</button
-          ><button
-            class="button secondary"
-            :disabled="pending"
-            @click="enterDemo('admin')"
-          >
-            管理员快捷登录
-          </button>
-        </div>
-        <p class="demo-safety">演示账号公开，请勿填写敏感资料。</p>
-      </div>
+      <nav class="auth-links">
+        <RouterLink v-if="isAdminPortal()" to="/login">返回用户登录</RouterLink>
+        <template v-else>
+          <RouterLink to="/register">注册账号</RouterLink>
+          <RouterLink to="/admin/login">管理员登录</RouterLink>
+        </template>
+      </nav>
     </section>
   </main>
 </template>

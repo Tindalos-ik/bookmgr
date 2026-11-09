@@ -1,4 +1,4 @@
-"""连接当前真实 MySQL 验证消费者权限和业务，仅删除自身 pytest 图书。"""
+"""连接当前真实 MySQL 验证消费者权限和业务，仅清理自身测试账户与图书。"""
 
 from pathlib import Path
 from datetime import timedelta
@@ -6,8 +6,9 @@ from uuid import uuid4
 from urllib.parse import quote
 import pytest
 from fastapi.testclient import TestClient
-from dependencies import create_access_token
-from database import AsyncSessionLocal, BookDB
+from sqlalchemy import delete, select, func
+from dependencies import create_access_token, password_context
+from database import AsyncSessionLocal, BookDB, UserDB, AuthSessionDB
 from main import app
 
 
@@ -18,22 +19,59 @@ def client():
         yield instance
 
 
-@pytest.fixture(scope="session")
-def accounts(client):
-    """通过 client 为两个持久演示账户登录，结束时注销自己的会话。"""
-    result = {}
-    for name in ("admin", "reader"):
+@pytest.fixture
+def registered_user(client):
+    """通过 client 注册独立账户，结束时仅删除本 fixture 创建的用户ID。"""
+    ids = []
+
+    async def remove_users():
+        """从真实数据库删除 ids 中本 fixture 创建的用户及级联记录；无参数。"""
+        async with AsyncSessionLocal() as db:
+            await db.execute(delete(UserDB).where(UserDB.id.in_(ids)))
+            await db.commit()
+
+    def register(password="测试 password 123", username=None):
+        """通过真实接口注册 username 和 password，返回用户资料及原始密码。"""
+        username = username or "pytest-" + uuid4().hex
         response = client.post(
-            "/auth/token", data={"username": name, "password": name + "123"}
+            "/auth/register", json={"username": username, "password": password}
         )
         assert response.status_code == 200, response.text
-        result[name] = {
+        user = response.json()["data"]
+        ids.append(user["id"])
+        return {**user, "password": password}
+
+    try:
+        yield register
+    finally:
+        client.portal.call(remove_users)
+
+
+@pytest.fixture
+def accounts(client, registered_user):
+    """通过 client 和 registered_user 创建自有账户，仅提升自有管理员角色。"""
+    result = {}
+
+    async def promote(user_id):
+        """将真实数据库中本 fixture 创建的 user_id 设为管理员。"""
+        async with AsyncSessionLocal() as db:
+            user = await db.get(UserDB, user_id)
+            user.role = "admin"
+            await db.commit()
+
+    for role in ("admin", "reader"):
+        user = registered_user()
+        if role == "admin":
+            client.portal.call(promote, user["id"])
+        response = client.post(
+            "/auth/token",
+            data={"username": user["username"], "password": user["password"]},
+        )
+        assert response.status_code == 200, response.text
+        result[role] = {
             "Authorization": "Bearer " + response.json()["data"]["access_token"]
         }
     yield result
-    for headers in result.values():
-        response = client.post("/auth/logout", headers=headers)
-        assert response.status_code == 200, response.text
 
 
 @pytest.fixture
@@ -192,17 +230,18 @@ def test_favorite_isolation_visibility_delete(client, accounts, create_book):
         assert client.delete(f"/favorites/{book_id}", headers=reader).status_code == 200
 
 
-def test_login_revocation_and_expiration(client):
-    """通过 client 验证真实密码、注销旧 token、过期和无会话 JWT。"""
+def test_login_revocation_and_expiration(client, registered_user):
+    """通过 client、registered_user 验证真实密码、注销、过期和无会话 JWT。"""
+    user = registered_user()
     assert client.post("/auth/token").status_code == 400
     assert (
         client.post(
-            "/auth/token", data={"username": "reader", "password": "wrong"}
+            "/auth/token", data={"username": user["username"], "password": "wrong"}
         ).status_code
         == 401
     )
     response = client.post(
-        "/auth/token", data={"username": "reader", "password": "reader123"}
+        "/auth/token", data={"username": user["username"], "password": user["password"]}
     )
     body = response.json()["data"]
     headers = {"Authorization": "Bearer " + body["access_token"]}
@@ -324,3 +363,193 @@ def test_invalid_pagination(client, accounts, params):
         client.get("/books", params=params, headers=accounts["reader"]).status_code
         == 400
     )
+
+
+def test_register_identity_and_password_spaces(client, registered_user):
+    """用 client、registered_user 验证用户名trim、真实哈希、密码空格和重复约束。"""
+    username = "pytest-" + uuid4().hex
+    user = registered_user(
+        password="  中文 password  ", username="  " + username + "  "
+    )
+    assert user["username"] == username and user["name"] == username
+    assert user["role"] == "reader" and "password_hash" not in user
+
+    async def verify_hash():
+        """读取自有 user 的真实密码哈希并校验原始空格；无参数。"""
+        async with AsyncSessionLocal() as db:
+            row = await db.get(UserDB, user["id"])
+            return (
+                row.password_hash != user["password"]
+                and password_context.verify(user["password"], row.password_hash)
+                and not password_context.verify(
+                    user["password"].strip(), row.password_hash
+                )
+            )
+
+    assert client.portal.call(verify_hash)
+    for duplicate in (username, username.upper()):
+        assert (
+            client.post(
+                "/auth/register",
+                json={"username": duplicate, "password": "password123"},
+            ).status_code
+            == 409
+        )
+    for password, status in ((user["password"], 200), (user["password"].strip(), 401)):
+        response = client.post(
+            "/auth/token", data={"username": username, "password": password}
+        )
+        assert response.status_code == status, response.text
+        if status == 200:
+            headers = {
+                "Authorization": "Bearer " + response.json()["data"]["access_token"]
+            }
+            assert (
+                client.get(
+                    "/books", params={"scope": "all"}, headers=headers
+                ).status_code
+                == 403
+            )
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"username": "ab", "password": "password123"},
+        {"username": " " * 5, "password": "password123"},
+        {"username": "u" * 61, "password": "password123"},
+        {"username": "valid-user", "password": "short"},
+        {"username": "valid-user", "password": " " * 8},
+        {"username": "valid-user", "password": "p" * 129},
+        {"username": "valid-user", "password": "password123", "role": "admin"},
+    ],
+)
+def test_register_validation(client, payload):
+    """用 client 拒绝 payload 中的无效字段及角色注入。"""
+    assert client.post("/auth/register", json=payload).status_code == 400
+
+
+def test_password_change_revokes_all_sessions(client, registered_user):
+    """用 client、registered_user 验证错误旧密码无副作用、改密及全部会话撤销。"""
+    user = registered_user(password="p" * 128)
+    tokens = []
+    for _ in range(3):
+        response = client.post(
+            "/auth/token",
+            data={"username": user["username"], "password": user["password"]},
+        )
+        assert response.status_code == 200, response.text
+        tokens.append(
+            {"Authorization": "Bearer " + response.json()["data"]["access_token"]}
+        )
+    new_password = "  新的 password 456  "
+    assert (
+        client.put(
+            "/auth/password",
+            json={"old_password": user["password"], "new_password": new_password},
+        ).status_code
+        == 401
+    )
+    for payload in (
+        {"old_password": "", "new_password": new_password},
+        {"old_password": "p" * 129, "new_password": new_password},
+        {"old_password": user["password"], "new_password": user["password"]},
+        {"old_password": user["password"], "new_password": " " * 8},
+        {"old_password": user["password"], "new_password": "short"},
+        {"old_password": user["password"], "new_password": "p" * 129},
+        {
+            "old_password": user["password"],
+            "new_password": new_password,
+            "role": "admin",
+        },
+    ):
+        assert (
+            client.put("/auth/password", json=payload, headers=tokens[0]).status_code
+            == 400
+        )
+    assert (
+        client.put(
+            "/auth/password",
+            json={"old_password": "wrong", "new_password": new_password},
+            headers=tokens[0],
+        ).status_code
+        == 400
+    )
+    for headers in tokens:
+        assert client.get("/auth/me", headers=headers).status_code == 200
+    response = client.post(
+        "/auth/token", data={"username": user["username"], "password": user["password"]}
+    )
+    assert response.status_code == 200
+    tokens.append(
+        {"Authorization": "Bearer " + response.json()["data"]["access_token"]}
+    )
+    response = client.put(
+        "/auth/password",
+        json={"old_password": user["password"], "new_password": new_password},
+        headers=tokens[0],
+    )
+    assert response.status_code == 200 and response.json()["data"] is None
+    for headers in tokens:
+        assert client.get("/auth/me", headers=headers).status_code == 401
+    assert (
+        client.post(
+            "/auth/token",
+            data={"username": user["username"], "password": user["password"]},
+        ).status_code
+        == 401
+    )
+    assert (
+        client.post(
+            "/auth/token", data={"username": user["username"], "password": new_password}
+        ).status_code
+        == 200
+    )
+
+
+
+def test_portal_authentication_and_real_role(client, registered_user):
+    """用 client、registered_user 验证入口权限先于会话签发，角色只取真实数据库。"""
+    user = registered_user()
+    credentials = {"username": user["username"], "password": user["password"]}
+
+    async def session_count():
+        """查询当前自有 user 的真实会话数；无参数。"""
+        async with AsyncSessionLocal() as db:
+            return await db.scalar(
+                select(func.count())
+                .select_from(AuthSessionDB)
+                .where(AuthSessionDB.user_id == user["id"])
+            )
+
+    before = client.portal.call(session_count)
+    for password, status in ((user["password"], 403), ("wrong-password", 401)):
+        response = client.post(
+            "/auth/token",
+            data={**credentials, "password": password, "portal": "admin", "role": "admin"},
+        )
+        assert response.status_code == status, response.text
+    assert client.portal.call(session_count) == before
+    assert client.post(
+        "/auth/token", data={**credentials, "portal": "invalid"}
+    ).status_code == 400
+    response = client.post(
+        "/auth/token", data={**credentials, "portal": "reader", "role": "admin"}
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["data"]["user"]["role"] == "reader"
+
+    async def promote_own_user():
+        """仅将本测试创建的 user 提升为管理员以验证两个入口；无参数。"""
+        async with AsyncSessionLocal() as db:
+            row = await db.get(UserDB, user["id"])
+            row.role = "admin"
+            await db.commit()
+
+    client.portal.call(promote_own_user)
+    for portal in ("reader", "admin"):
+        response = client.post("/auth/token", data={**credentials, "portal": portal})
+        assert response.status_code == 200, response.text
+        assert response.json()["data"]["user"]["role"] == "admin"
+        headers = {"Authorization": "Bearer " + response.json()["data"]["access_token"]}
+        assert client.get("/books", params={"scope": "all"}, headers=headers).status_code == 200

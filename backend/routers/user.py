@@ -1,38 +1,63 @@
 """真实账户登录、会话撤销、个人收藏及首页概览路由。"""
 
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Literal
+from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt
-from sqlalchemy import select, delete
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from config import settings
 from database import get_db, UserDB, AuthSessionDB
 from dependencies import (
     get_current_user,
     get_bearer_token,
-    issue_token,
-    password_context,
 )
-from schemas import ResponseModel, UserOut, TokenResp
-from services import BookService, book_out
+from schemas import (
+    ResponseModel,
+    UserOut,
+    TokenResp,
+    RegisterRequest,
+    PasswordChangeRequest,
+)
+from services import AuthService, BookService, book_out
 
 router = APIRouter(tags=["用户"])
 
 
 @router.post("/auth/token", response_model=ResponseModel, summary="用户名密码登录")
 async def login(
-    form: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)
+    form: OAuth2PasswordRequestForm = Depends(),
+    portal: Literal["reader", "admin"] = Form(
+        default="reader", description="登录入口：reader 用户入口或 admin 管理员入口"
+    ),
+    db: AsyncSession = Depends(get_db),
 ):
-    """验证 form 用户名密码并在 db 创建登录会话。"""
-    user = await db.scalar(select(UserDB).where(UserDB.username == form.username))
-    if user is None or not password_context.verify(form.password, user.password_hash):
-        raise HTTPException(
-            401, "用户名或密码错误", headers={"WWW-Authenticate": "Bearer"}
-        )
-    token = await issue_token(db, user)
+    """验证 form 用户名密码及 portal 入口权限，在 db 创建真实角色会话。"""
+    user, token = await AuthService.login(db, form.username, form.password, portal)
     return ResponseModel.success(
         TokenResp(access_token=token, user=UserOut.model_validate(user))
     )
+
+
+@router.post("/auth/register", response_model=ResponseModel, summary="注册读者账户")
+async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    """使用 request 在 db 注册普通读者，返回公开资料且不自动登录。"""
+    return ResponseModel.success(
+        UserOut.model_validate(await AuthService.register(db, request))
+    )
+
+
+@router.put(
+    "/auth/password", response_model=ResponseModel, summary="更改密码并退出全部会话"
+)
+async def change_password(
+    request: PasswordChangeRequest,
+    user: UserDB = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """验证 request 旧密码并在 db 更新 user 密码，撤销全部会话。"""
+    await AuthService.change_password(db, user.id, request)
+    return ResponseModel.success()
 
 
 @router.get("/auth/me", response_model=ResponseModel, summary="查询当前用户")

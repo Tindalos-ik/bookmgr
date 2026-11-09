@@ -184,10 +184,11 @@ export function errorMessage(error: unknown): string {
   throw error;
 }
 
-/** 用 account、password 表单登录，仅当前会话可以保存返回令牌。 */
+/** 用账号、密码及 portal 登录；仅当前请求可保存服务端令牌。 */
 export async function login(
   account: string,
   password: string,
+  portal: "reader" | "admin" = "reader",
 ): Promise<Session> {
   const generation = requestGeneration;
   const result = await request<{
@@ -196,11 +197,33 @@ export async function login(
     user: ApiUser;
   }>("/auth/token", {
     method: "POST",
-    body: new URLSearchParams({ username: account, password }),
+    body: new URLSearchParams({ username: account, password, portal }),
   });
   assertCurrent(generation);
   sessionStorage.setItem(TOKEN_KEY, result.access_token);
   return mapUser(result.user);
+}
+
+/** 用 username、password 创建固定读者账号，不自动登录。 */
+export function register(username: string, password: string): Promise<Session> {
+  return request<ApiUser>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify({ username, password }),
+  }).then(mapUser);
+}
+
+/** 以当前 Bearer 令牌更改密码；参数保留原始空白。 */
+export function changePassword(
+  oldPassword: string,
+  newPassword: string,
+): Promise<null> {
+  return request<null>("/auth/password", {
+    method: "PUT",
+    body: JSON.stringify({
+      old_password: oldPassword,
+      new_password: newPassword,
+    }),
+  });
 }
 
 /** 返回当前令牌对应的真实用户；无参数。 */

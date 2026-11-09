@@ -1,4 +1,4 @@
-<!-- 书房导航布局，移动抽屉支持键盘循环与焦点归还。 -->
+<!-- 书房导航布局：账户改密与业务导航同级，移动抽屉支持键盘循环与焦点归还。 -->
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -8,6 +8,7 @@ import {
   Library,
   Heart,
   Settings2,
+  KeyRound,
   LogOut,
   Menu,
   X,
@@ -28,6 +29,7 @@ const links = computed(() => [
   ...(store.isAdmin
     ? [{ to: "/manage/books", label: "图书管理", icon: Settings2 }]
     : []),
+  { to: "/change-password", label: "修改密码", icon: KeyRound },
 ]);
 watch(
   () => route.fullPath,
@@ -136,9 +138,11 @@ async function logout() {
           ><span>{{ route.meta.title }}</span>
         </div>
         <div class="account">
-          <span class="avatar">{{ store.session?.name.slice(0, 1) }}</span
-          ><span>{{ store.session?.name }}</span
-          ><button
+          <span class="avatar">{{ store.session?.name.slice(0, 1) }}</span>
+          <span class="account-name" :title="store.session?.username">{{
+            store.session?.username
+          }}</span>
+          <button
             class="icon-button"
             title="退出登录"
             aria-label="退出登录"

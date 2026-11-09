@@ -11,19 +11,25 @@ const route = useRoute();
 async function retrySession() {
   await store.retryInitialize();
   if (store.restoreError) return;
-  if (!store.session) await router.replace("/login");
-  else if (route.path === "/login" || (route.meta.admin && !store.isAdmin)) {
-    await router.replace("/overview");
+  if (!store.session) {
+    await router.replace("/login");
+  } else if (
+    route.meta.guestOnly ||
+    (route.meta.admin && !store.isAdmin) ||
+    (route.path === "/" && store.isAdmin)
+  ) {
+    await router.replace(store.isAdmin ? "/manage/books" : "/overview");
   }
 }
 watch(
   [() => store.session, () => store.initialized],
   ([session, initialized]) => {
     if (
+      route.matched.length > 0 &&
       initialized &&
       !store.restoreError &&
       !session &&
-      route.path !== "/login"
+      !route.meta.guestOnly
     ) {
       void router.replace("/login");
     }

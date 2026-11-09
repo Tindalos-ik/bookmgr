@@ -1,4 +1,4 @@
-"""图书管理 API 入口，数据库结构由 Alembic 显式迁移。"""
+"""图书管理 API 入口，使用已有 MySQL 业务表。"""
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI

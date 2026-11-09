@@ -1,4 +1,4 @@
-/* 青叶书房公共设计、布局与响应式基础样式。 */
+/* 青叶书房公共设计、同级账户导航与响应式基础样式。 */
 :root {
   font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
   color: #242936;
@@ -404,27 +404,6 @@ label.field {
   width: 100%;
   justify-content: space-between;
 }
-.demo-box {
-  margin-top: 26px;
-  background: #f6faf8;
-  padding: 18px;
-  border-radius: 12px;
-  border: 1px solid #e1eceb;
-  font-size: 13px;
-}
-.demo-box p {
-  color: #65747a;
-  margin: 9px 0;
-}
-.demo-actions {
-  display: flex;
-  gap: 8px;
-}
-.demo-actions .button {
-  padding: 8px 10px;
-  font-size: 12px;
-  flex: 1;
-}
 .form-error {
   color: #b53d4c;
   background: #fff0f1;
@@ -586,10 +565,12 @@ td small {
     width: 260px;
     z-index: 60;
     transform: translateX(-100%);
+    visibility: hidden;
     transition: transform 0.15s;
   }
   .sidebar.open {
     transform: translateX(0);
+    visibility: visible;
   }
   .drawer-close {
     display: flex;
@@ -726,6 +707,64 @@ td small {
   .notice {
     bottom: 16px;
     font-size: 12px;
+  }
+}
+.auth-links {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+}
+.auth-links a,
+.auth-card > a {
+  color: #28736f;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.auth-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.auth-card {
+  width: min(100%, 440px);
+  padding: 32px;
+  background: white;
+  border: 1px solid #d9e9e7;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px #28736f0c;
+}
+.auth-card h1 {
+  font-size: 25px;
+  margin-bottom: 24px;
+}
+.auth-submit {
+  width: 100%;
+  min-height: 42px;
+  margin-bottom: 16px;
+}
+.form-error {
+  color: #b53d4c;
+}
+.account {
+  min-width: 0;
+}
+.account-name {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 560px) {
+  .account {
+    gap: 4px;
+  }
+  .account-name {
+    max-width: 72px;
+  }
+  .auth-card {
+    padding: 24px 18px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

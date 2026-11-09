@@ -10,7 +10,7 @@ if not "%~1"=="" (
 )
 pushd "%~dp0" || goto failed
 
-rem 启动前检查工具与已安装依赖，后端窗口先执行当前库迁移。
+rem 启动前检查工具与已安装依赖。
 where uv >nul 2>nul
 if errorlevel 1 (
     echo [错误] 未找到 uv，请安装 uv 并重新打开终端。
@@ -34,7 +34,7 @@ if not exist "backend\.venv\Scripts\python.exe" (
     echo [错误] 缺少后端虚拟环境，请在 backend 目录执行 uv sync --frozen。
     goto failed
 )
-"backend\.venv\Scripts\python.exe" -c "import sys; assert sys.version_info >= (3, 12), 'Python 3.12+ required'; import fastapi, uvicorn, aiomysql, sqlalchemy, pydantic_settings, jose, multipart, passlib, alembic"
+"backend\.venv\Scripts\python.exe" -c "import sys; assert sys.version_info >= (3, 12), 'Python 3.12+ required'; import fastapi, uvicorn, aiomysql, sqlalchemy, pydantic_settings, jose, multipart, passlib"
 if errorlevel 1 (
     echo [错误] 后端依赖检查失败，请在 backend 目录执行 uv sync --frozen 并处理上方错误。
     goto failed
@@ -64,8 +64,6 @@ rem 后端运行入口，参数 --backend；工作目录固定为脚本旁的 ba
 title Bookmgr Backend
 pushd "%~dp0backend" || goto failed
 echo 启动后端，使用已有 .env 与 MySQL；请查看下方真实启动日志。
-uv run --no-sync alembic upgrade head
-if errorlevel 1 goto service_exit
 uv run --no-sync main.py
 goto service_exit
 
