@@ -1,0 +1,163 @@
+[
+  {
+    "id": "book-1",
+    "name": "沿河慢行",
+    "author": "林溪",
+    "price": 19.8,
+    "category": "散文随笔",
+    "description": "沿着河岸走过清晨与黄昏，在桥、渡口和旧书店之间记下小城的温柔日常。",
+    "cover": "/covers/book-1.svg",
+    "createdAt": "2026-10-01T08:00:00.000Z",
+    "published": true,
+    "file": {
+      "name": "沿河慢行.txt",
+      "format": "TXT",
+      "size": 653,
+      "url": "/samples/book-1.txt"
+    },
+    "publishedAt": "2026-10-01T08:00:00.000Z"
+  },
+  {
+    "id": "book-2",
+    "name": "风在纸上停留",
+    "author": "顾知秋",
+    "price": 21.8,
+    "category": "文学小说",
+    "description": "一封迟迟未寄出的信，牵起两代人关于纸张、风声与重逢的故事。",
+    "cover": "/covers/book-2.svg",
+    "createdAt": "2026-10-02T08:00:00.000Z",
+    "published": true,
+    "file": {
+      "name": "风在纸上停留.txt",
+      "format": "TXT",
+      "size": 659,
+      "url": "/samples/book-2.txt"
+    },
+    "publishedAt": "2026-10-02T08:00:00.000Z"
+  },
+  {
+    "id": "book-3",
+    "name": "山间来信",
+    "author": "许山",
+    "price": 23.8,
+    "category": "自然观察",
+    "description": "从山口出发，辨认林间鸟鸣与草木，读一封写给远方朋友的山野来信。",
+    "cover": "/covers/book-3.svg",
+    "createdAt": "2026-10-03T08:00:00.000Z",
+    "published": true,
+    "file": {
+      "name": "山间来信.txt",
+      "format": "TXT",
+      "size": 659,
+      "url": "/samples/book-3.txt"
+    },
+    "publishedAt": "2026-10-03T08:00:00.000Z"
+  },
+  {
+    "id": "book-4",
+    "name": "月光下的植物园",
+    "author": "叶小满",
+    "price": 25.8,
+    "category": "生活美学",
+    "description": "跟随夜间植物观察笔记，认识月光下叶片、花朵与昆虫的细微变化。",
+    "cover": "/covers/book-4.svg",
+    "createdAt": "2026-10-04T08:00:00.000Z",
+    "published": true,
+    "publishedAt": "2026-10-04T08:00:00.000Z"
+  },
+  {
+    "id": "book-5",
+    "name": "城市的第七种颜色",
+    "author": "周见青",
+    "price": 27.8,
+    "category": "散文随笔",
+    "description": "一位年轻绘图员寻找城市地图上遗漏的颜色，也寻找属于自己的方向。",
+    "cover": "/covers/book-5.svg",
+    "createdAt": "2026-10-05T08:00:00.000Z",
+    "published": true,
+    "publishedAt": "2026-10-05T08:00:00.000Z"
+  },
+  {
+    "id": "book-6",
+    "name": "厨房里的四季",
+    "author": "陈禾",
+    "price": 29.8,
+    "category": "文学小说",
+    "description": "用四季食材整理家常餐桌，记录从春日青菜到冬夜热汤的生活小事。",
+    "cover": "/covers/book-6.svg",
+    "createdAt": "2026-10-06T08:00:00.000Z",
+    "published": true,
+    "publishedAt": "2026-10-06T08:00:00.000Z"
+  },
+  {
+    "id": "book-7",
+    "name": "听见海岸线",
+    "author": "江遥",
+    "price": 31.8,
+    "category": "自然观察",
+    "description": "潮间带观察者记下潮汐、贝壳和候鸟，沿着海岸寻找自然的节律。",
+    "cover": "/covers/book-7.svg",
+    "createdAt": "2026-10-07T08:00:00.000Z",
+    "published": true,
+    "publishedAt": "2026-10-07T08:00:00.000Z"
+  },
+  {
+    "id": "book-8",
+    "name": "小院观察手记",
+    "author": "陆青",
+    "price": 33.8,
+    "category": "生活美学",
+    "description": "从一座小院开始，练习整理、栽种与留白，让居住空间容纳平常的快乐。",
+    "cover": "/covers/book-8.svg",
+    "createdAt": "2026-10-08T08:00:00.000Z",
+    "published": true,
+    "publishedAt": "2026-10-08T08:00:00.000Z"
+  },
+  {
+    "id": "book-9",
+    "name": "星空邮差",
+    "author": "宋晚",
+    "price": 35.8,
+    "category": "散文随笔",
+    "description": "穿行星际的邮差收到一封没有地址的信，循着微光寻找它的收信人。",
+    "cover": "/covers/book-9.svg",
+    "createdAt": "2026-10-09T08:00:00.000Z",
+    "published": true,
+    "publishedAt": "2026-10-09T08:00:00.000Z"
+  },
+  {
+    "id": "book-10",
+    "name": "与旧物重逢",
+    "author": "温榆",
+    "price": 37.8,
+    "category": "文学小说",
+    "description": "一张旧椅、一只搪瓷杯，整理修补日常物件背后的使用记忆。",
+    "cover": "/covers/book-10.svg",
+    "createdAt": "2026-10-10T08:00:00.000Z",
+    "published": true,
+    "publishedAt": "2026-10-10T08:00:00.000Z"
+  },
+  {
+    "id": "book-11",
+    "name": "雨天散步指南",
+    "author": "徐白",
+    "price": 39.8,
+    "category": "自然观察",
+    "description": "观察雨滴、苔藓与积水倒影，沿着小路认识雨天里的自然细节。",
+    "cover": "/covers/book-11.svg",
+    "createdAt": "2026-10-11T08:00:00.000Z",
+    "published": true,
+    "publishedAt": "2026-10-11T08:00:00.000Z"
+  },
+  {
+    "id": "book-12",
+    "name": "留给明天的灯",
+    "author": "沈南",
+    "price": 41.8,
+    "category": "生活美学",
+    "description": "用灯光、书桌和晚间仪式，为忙碌生活留下一段安静的时间。",
+    "cover": "/covers/book-12.svg",
+    "createdAt": "2026-10-12T08:00:00.000Z",
+    "published": false
+  }
+]

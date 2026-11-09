@@ -1,0 +1,5 @@
+# 前端依赖、构建产物及本地日志。
+node_modules/
+dist/
+*.tsbuildinfo
+*.log

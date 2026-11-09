@@ -1,0 +1,38 @@
+/* 读者书目页面共享的局部视觉样式变量与辅助排版。 */
+.catalog-page {
+  color: #242936;
+}
+
+.catalog-page button,
+.catalog-page select,
+.catalog-page a {
+  font: inherit;
+}
+
+.catalog-page a:focus-visible,
+.catalog-page button:focus-visible,
+.catalog-page select:focus-visible {
+  outline: 3px solid #28736f;
+  outline-offset: 3px;
+}
+
+.catalog-page .catalog-link {
+  color: #28736f;
+  font-weight: 650;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.catalog-page .catalog-link:hover {
+  color: #205e5b;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .catalog-page a,
+  .catalog-page button {
+    transition:
+      color 150ms ease,
+      background-color 150ms ease,
+      transform 150ms ease;
+  }
+}
